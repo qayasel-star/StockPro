@@ -1,0 +1,60 @@
+
+name: Compilar APK StockPro
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'StockPro_reconstruido/**'
+      - '.github/workflows/compilar-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: StockPro_reconstruido
+
+    steps:
+      - name: Descargar codigo
+        uses: actions/checkout@v4
+
+      - name: Instalar Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Preparar Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Verificar proyecto
+        run: |
+          echo "Contenido del proyecto:"
+          ls -la
+          test -f settings.gradle.kts || {
+            echo "ERROR: no se encuentra settings.gradle.kts"
+            exit 1
+          }
+          test -f app/build.gradle.kts || {
+            echo "ERROR: no se encuentra app/build.gradle.kts"
+            exit 1
+          }
+
+      - name: Compilar APK debug
+        run: gradle assembleDebug --no-daemon
+
+      - name: Publicar APK
+        uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: StockPro-APK-debug
+          path: StockPro_reconstruido/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 14
